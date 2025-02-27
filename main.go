@@ -27,9 +27,9 @@ func NewLocalFS(rootPath string, opts ...func(lfs *LocalFS)) (lfs *LocalFS, err 
 	return lfs, nil
 }
 
-func WithTryFile(files string) func(lfs *LocalFS) {
+func WithTryFile(file string) func(lfs *LocalFS) {
 	return func(lfs *LocalFS) {
-		lfs.tryFiles = append(lfs.tryFiles, files)
+		lfs.tryFiles = append(lfs.tryFiles, file)
 	}
 }
 
@@ -40,36 +40,25 @@ func WithTryFiles(files ...string) func(lfs *LocalFS) {
 }
 
 func (lfs *LocalFS) Open(name string) (fd fs.File, err error) {
-	name = filepath.Join(lfs.rootPath, name)
-	if name, err = filepath.Abs(name); err != nil {
-		return nil, err
-	}
-	if !strings.HasPrefix(name, lfs.rootPath) {
-		return nil, os.ErrNotExist
-	}
 
-	return lfs.tryOpen(name)
+	var listOfFiles = []string{"name"}
+	listOfFiles = append(listOfFiles, lfs.tryFiles...)
+
+	return lfs.tryOpen(listOfFiles...)
 }
 
-func (lfs *LocalFS) tryOpen(name string) (fd fs.File, err error) {
-	if fd, err = os.Open(name); err != nil {
-		if !os.IsNotExist(err) {
+func (lfs *LocalFS) tryOpen(fileNames ...string) (fd fs.File, err error) {
+	for _, filename := range fileNames {
+		filename = filepath.Join(lfs.rootPath, filename)
+		if filename, err = filepath.Abs(filename); err != nil {
 			return nil, err
 		}
-		for _, tryFile := range lfs.tryFiles {
-			if fd, err = os.Open(tryFile); err != nil {
-				if !os.IsNotExist(err) {
-					return nil, err
-				}
-			} else {
-				break
+		if strings.HasPrefix(filename, lfs.rootPath) {
+			if fd, err = os.Open(filename); err == nil {
+				return fd, nil
 			}
-		}
-
-		if fd == nil {
-			return nil, os.ErrNotExist
 		}
 	}
 
-	return fd, nil
+	return nil, os.ErrNotExist
 }
