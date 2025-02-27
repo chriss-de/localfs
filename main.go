@@ -41,7 +41,7 @@ func WithTryFiles(files ...string) func(lfs *LocalFS) {
 
 func (lfs *LocalFS) Open(name string) (fd fs.File, err error) {
 
-	var listOfFiles = []string{"name"}
+	var listOfFiles = []string{name}
 	listOfFiles = append(listOfFiles, lfs.tryFiles...)
 
 	return lfs.tryOpen(listOfFiles...)
